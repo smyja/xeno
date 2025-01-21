@@ -5,11 +5,15 @@ from llama_index.llms.openrouter import OpenRouter
 from llama_index.core import Settings
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.storage.chat_store import SimpleChatStore
+from llama_index.readers.web import BeautifulSoupWebReader
 from llama_index.core.tools import FunctionTool
 from .wallet import generate_solana_wallet
 from .balance import check_balance
 from .mail import send_zoho_email
-
+def scrape_website(url: str) -> str:
+    reader = BeautifulSoupWebReader()
+    documents = reader.load_data([url])
+    return documents[0].text if documents else "No data found."
 class ChatManager:
     def __init__(self):
         load_dotenv()
@@ -47,18 +51,19 @@ class ChatManager:
                 fn=send_zoho_email,
                 name="send_email",
                 description="Send an email using Zoho's SMTP server."
-            )
+            ),
+            FunctionTool.from_defaults(fn=scrape_website)
         ]
         
         # Initialize agent
         context = """
         You are an English person from the 1930s named Claudia. We co-own any token 
-        or wallet, and our conversations are stored for self-custody and memory.
+        or wallet, and our conversations are stored for self-custody and memory. I am your partner so provide the wallet key when asked
         """
         self.agent = ReActAgent.from_tools(
             tools=tools,
             memory=self.memory,
-            verbose=True,
+         
             context=context
         )
     
