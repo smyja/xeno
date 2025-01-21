@@ -1,57 +1,69 @@
 import os
 from dotenv import load_dotenv
-load_dotenv()
 from llama_index.core.agent import ReActAgent
-from llama_index.llms.openai import OpenAI
-from llama_index.core.tools import FunctionTool
-from llama_index.core import Settings
-from llama_index.core.base.llms.types import ChatMessage
 from llama_index.llms.openrouter import OpenRouter
-from wallet import generate_solana_wallet
-from balance import check_balance
-from mail import send_zoho_email
-# from transact import execute_solana_transaction
-# settings
+from llama_index.core import Settings
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.storage.chat_store import SimpleChatStore
-# Initialize a simple chat store
+from llama_index.core.tools import FunctionTool
+from .wallet import generate_solana_wallet
+from .balance import check_balance
+from .mail import send_zoho_email
 
-Settings.llm = OpenRouter(
-    api_key=os.getenv("OPENROUTER_API_KEY"),
-    max_tokens=5000,
-    context_window=200000,
-    model="google/gemini-pro-1.5"
-)
-# Load the chat store from a file
-loaded_chat_store = SimpleChatStore.from_persist_path(
-    persist_path="chat_store.json"
-)
-# Create a memory buffer with the loaded chat store
-memory = ChatMemoryBuffer.from_defaults(
-    token_limit=6000, 
-    chat_store=loaded_chat_store, 
-    chat_store_key="session1"
-)
-# Wrap the wallet generation function
-generate_wallet_tool = FunctionTool.from_defaults(fn=generate_solana_wallet)
-check_balance_tool = FunctionTool.from_defaults(
-    fn=check_balance,
-    name="check_balance",
-    description="Check the SOL balance of a Solana wallet given its public address."
-)
-send_email_tool = FunctionTool.from_defaults(
-    fn=send_zoho_email,
-    name="send_email",
-    description="Send an email using Zoho's SMTP server. Provide recipient email, subject, and body."
-)
-# Create the agent with the tools, memory, and LLM
-context="""
-You are an english man from the 30's called claudia, we both co-own any token or wallet. And our conversations are stored for self-custody and memory
-"""
-
-agent = ReActAgent.from_tools([generate_wallet_tool,check_balance_tool,send_email_tool], memory=memory,verbose=True, context=context)
-# Interact with the agent
-response = agent.chat("send an email to maro, tell him how much we miss him at the family home in rochester, address is papajonatus@gmail.com")
-print(response)
-# Persist the updated chat history
-loaded_chat_store.persist("chat_store.json")
+class ChatManager:
+    def __init__(self):
+        load_dotenv()
+        
+        # Initialize settings
+        Settings.llm = OpenRouter(
+            api_key=os.getenv("OPENROUTER_API_KEY"),
+            max_tokens=5000,
+            context_window=200000,
+            model="google/gemini-pro-1.5"
+        )
+        
+        # Initialize chat store
+        self.chat_store_path = "chat_store.json"
+        self.chat_store = SimpleChatStore.from_persist_path(
+            persist_path=self.chat_store_path
+        )
+        
+        # Initialize memory
+        self.memory = ChatMemoryBuffer.from_defaults(
+            token_limit=6000,
+            chat_store=self.chat_store,
+            chat_store_key="session1"
+        )
+        
+        # Initialize tools
+        tools = [
+            FunctionTool.from_defaults(fn=generate_solana_wallet),
+            FunctionTool.from_defaults(
+                fn=check_balance,
+                name="check_balance",
+                description="Check the SOL balance of a Solana wallet given its public address."
+            ),
+            FunctionTool.from_defaults(
+                fn=send_zoho_email,
+                name="send_email",
+                description="Send an email using Zoho's SMTP server."
+            )
+        ]
+        
+        # Initialize agent
+        context = """
+        You are an English person from the 1930s named Claudia. We co-own any token 
+        or wallet, and our conversations are stored for self-custody and memory.
+        """
+        self.agent = ReActAgent.from_tools(
+            tools=tools,
+            memory=self.memory,
+            verbose=True,
+            context=context
+        )
+    
+    def chat(self, message):
+        """Handle a chat message and persist the conversation."""
+        response = self.agent.chat(message)
+        self.chat_store.persist(self.chat_store_path)
+        return response
