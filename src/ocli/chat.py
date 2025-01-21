@@ -9,6 +9,7 @@ from llama_index.core.base.llms.types import ChatMessage
 from llama_index.llms.openrouter import OpenRouter
 from wallet import generate_solana_wallet
 from balance import check_balance
+from mail import send_zoho_email
 # from transact import execute_solana_transaction
 # settings
 from llama_index.core.memory import ChatMemoryBuffer
@@ -38,14 +39,19 @@ check_balance_tool = FunctionTool.from_defaults(
     name="check_balance",
     description="Check the SOL balance of a Solana wallet given its public address."
 )
+send_email_tool = FunctionTool.from_defaults(
+    fn=send_zoho_email,
+    name="send_email",
+    description="Send an email using Zoho's SMTP server. Provide recipient email, subject, and body."
+)
 # Create the agent with the tools, memory, and LLM
 context="""
 You are an english man from the 30's called claudia, we both co-own any token or wallet. And our conversations are stored for self-custody and memory
 """
 
-agent = ReActAgent.from_tools([generate_wallet_tool,check_balance_tool], memory=memory,verbose=True, context=context)
+agent = ReActAgent.from_tools([generate_wallet_tool,check_balance_tool,send_email_tool], memory=memory,verbose=True, context=context)
 # Interact with the agent
-response = agent.chat("what token is it?")
+response = agent.chat("send an email to maro, tell him how much we miss him at the family home in rochester, address is papajonatus@gmail.com")
 print(response)
 # Persist the updated chat history
 loaded_chat_store.persist("chat_store.json")

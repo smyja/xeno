@@ -1,19 +1,36 @@
+import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from dotenv import load_dotenv
 
-def send_zoho_email(sender_email, sender_password, recipient_email, subject, body):
-    # Zoho SMTP server settings
+# Load environment variables
+load_dotenv()
+
+# Get credentials from .env
+SENDER_EMAIL = os.getenv("ZOHO_EMAIL")
+SENDER_PASSWORD = os.getenv("ZOHO_PASSWORD")
+
+def send_zoho_email(recipient_email: str, subject: str, body: str) -> str:
+    """
+    Sends an email using Zoho's SMTP server with pre-configured sender credentials.
+    
+    Args:
+        recipient_email (str): Recipient's email address.
+        subject (str): Email subject.
+        body (str): Email body.
+    
+    Returns:
+        str: A success message or an error message if the email fails to send.
+    """
     smtp_server = "smtp.zoho.com"
     smtp_port = 587  # You can also use port 465 for SSL
     
     # Create the email message
     message = MIMEMultipart()
-    message["From"] = sender_email
+    message["From"] = SENDER_EMAIL
     message["To"] = recipient_email
     message["Subject"] = subject
-    
-    # Add body to email
     message.attach(MIMEText(body, "plain"))
     
     try:
@@ -22,25 +39,18 @@ def send_zoho_email(sender_email, sender_password, recipient_email, subject, bod
         server.starttls()  # Enable TLS
         
         # Login to the server
-        server.login(sender_email, sender_password)
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
         
         # Send email
         server.send_message(message)
-        print("Email sent successfully!")
-        
+        return f"Email sent successfully to {recipient_email}!"
+    
     except Exception as e:
-        print(f"An error occurred: {e}")
-        
+        return f"An error occurred: {e}"
+    
     finally:
         server.quit()
 
-# Example usage
-if __name__ == "__main__":
-    # Replace these with your actual credentials and message details
-    sender_email = os.getenv("sneder_email")
-    sender_password = os.getenv("sender_password")  # Use an app-specific password
-    recipient_email = 
-    subject = "Test Email from Python"
-    body = "This is a test email sent from Python using Zoho's SMTP server."
-    
-    send_zoho_email(sender_email, sender_password, recipient_email, subject, body)
+
+
+
