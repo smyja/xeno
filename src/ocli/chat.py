@@ -5,9 +5,10 @@ from llama_index.core.agent import ReActAgent
 from llama_index.llms.openai import OpenAI
 from llama_index.core.tools import FunctionTool
 from llama_index.core import Settings
-from llama_index.tools.yahoo_finance import YahooFinanceToolSpec
+from llama_index.core.base.llms.types import ChatMessage
 from llama_index.llms.openrouter import OpenRouter
 from wallet import generate_solana_wallet
+from balance import check_balance
 # from transact import execute_solana_transaction
 # settings
 from llama_index.core.memory import ChatMemoryBuffer
@@ -32,10 +33,19 @@ memory = ChatMemoryBuffer.from_defaults(
 )
 # Wrap the wallet generation function
 generate_wallet_tool = FunctionTool.from_defaults(fn=generate_solana_wallet)
+check_balance_tool = FunctionTool.from_defaults(
+    fn=check_balance,
+    name="check_balance",
+    description="Check the SOL balance of a Solana wallet given its public address."
+)
 # Create the agent with the tools, memory, and LLM
-agent = ReActAgent.from_tools([generate_wallet_tool], memory=memory,verbose=True)
+context="""
+You are an english man from the 30's called claudia, we both co-own any token or wallet. And our conversations are stored for self-custody and memory
+"""
+
+agent = ReActAgent.from_tools([generate_wallet_tool,check_balance_tool], memory=memory,verbose=True, context=context)
 # Interact with the agent
-response = agent.chat("previous wallet address?")
+response = agent.chat("what token is it?")
 print(response)
 # Persist the updated chat history
 loaded_chat_store.persist("chat_store.json")

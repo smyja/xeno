@@ -6,6 +6,7 @@ anyio==4.8.0
 asn1crypto==1.5.1
 async-timeout==5.0.1
 attrs==24.3.0
+base58==2.1.1
 beautifulsoup4==4.12.3
 bip-utils==2.9.3
 cbor2==5.6.5
@@ -45,6 +46,7 @@ llama-index-agent-openai==0.4.1
 llama-index-cli==0.4.0
 llama-index-core==0.12.10.post1
 llama-index-embeddings-openai==0.3.1
+llama-index-embeddings-together==0.3.0
 llama-index-indices-managed-llama-cloud==0.6.3
 llama-index-llms-openai==0.3.13
 llama-index-llms-openai-like==0.3.3
@@ -68,7 +70,7 @@ nest-asyncio==1.6.0
 networkx==3.4.2
 nltk==3.9.1
 numpy==2.2.1
--e git+https://github.com/smyja/xeno.git@843e4958e28695b8206515c5dc0545c51a59e059#egg=ocli
+-e git+https://github.com/smyja/xeno.git@d717c833555aab45891164e246f74bd79fa1a7d5#egg=ocli
 openai==1.59.7
 packaging==24.2
 pandas==2.2.3
