@@ -1,53 +1,37 @@
+import os
+import time
+from dotenv import load_dotenv
 from solders.keypair import Keypair
 from solders.pubkey import Pubkey
-from solders.message import Message
 from solders.transaction import Transaction
 from solders.system_program import TransferParams, transfer
 from solana.rpc.api import Client
-import time
+from llama_index.core.tools import FunctionTool
 
-# Configuration
-private_key = "6fa51980cf584633812c58d9035c799bca91e2e1980043a283c1d475369e3a83d252ceacde5801f0f70f142e6682a0e402fac8606e3efc200510a128ecafcb93"
-main_wallet = "FA1rQHH4BLtFyh9uRfbsVkhwcvKY1Bb9habT1FpxJxuQ"
-recipient_wallet = "AtcGKwhAD7QAj7WdeGMvAJJYhwEBuLVdPCZqvpQU9JbM"
+# Load environment variables
+load_dotenv()
+private_key = os.getenv("PRIVATE_KEY")
+main_wallet = os.getenv("MAIN_WALLET")
 
-def check_transaction_status(client: Client, signature: str, max_retries: int = 60, retry_delay: float = 1.0):
-    """Check transaction status with detailed error handling and longer timeout."""
-    print("\nChecking transaction status...")
+def execute_transaction(recipient_wallet: str, amount: float) -> str:
+    """
+    Execute a Solana transaction from the main wallet to a recipient's wallet.
     
-    for i in range(max_retries):
-        try:
-            # First check if transaction is finalized
-            response = client.get_signature_statuses([signature])
-            if response.value[0] is not None:
-                status = str(response.value[0].confirmation_status)
-                print(f"Current status: {status}")
-                
-                # Convert status string to lowercase for comparison
-                status_lower = status.lower()
-                if "confirmed" in status_lower or "finalized" in status_lower:
-                    return True, status
-            
-            # If not finalized, check if it failed
-            tx_details = client.get_transaction(signature)
-            if tx_details.value is not None:
-                if hasattr(tx_details.value, 'err') and tx_details.value.err is not None:
-                    return False, f"Transaction failed: {tx_details.value.err}"
-            
-        except Exception as e:
-            print(f"Error checking status (attempt {i+1}/{max_retries}): {str(e)}")
+    Args:
+        recipient_wallet (str): Public key of the recipient's wallet.
+        amount (float): Amount in SOL to transfer.
         
-        print(".", end="", flush=True)
-        time.sleep(retry_delay)
-    
-    return False, "Transaction confirmation timed out"
-
-def main():
+    Returns:
+        str: Transaction result message or error.
+    """
     try:
+        if not private_key or not main_wallet:
+            return "Missing configuration in .env. Ensure PRIVATE_KEY and MAIN_WALLET are set."
+
         # Initialize the client
         solana_client = Client("https://api.devnet.solana.com")
         
-        # Convert private key string to bytes and create keypair
+        # Convert private key string to bytes and create sender's keypair
         private_key_bytes = bytes.fromhex(private_key)
         sender_keypair = Keypair.from_bytes(private_key_bytes)
         
@@ -60,10 +44,9 @@ def main():
         print(f"Initial balance: {initial_balance} SOL")
         
         # Ensure sufficient balance (including fees)
-        amount = 0.1  # Amount to transfer
         required_amount = amount + 0.000005  # Adding estimated transaction fee
         if initial_balance < required_amount:
-            raise ValueError(f"Insufficient balance. Have {initial_balance} SOL, need {required_amount} SOL (including fees)")
+            return f"Insufficient balance. Have {initial_balance} SOL, need {required_amount} SOL (including fees)"
         
         # Get latest blockhash
         latest_blockhash_info = solana_client.get_latest_blockhash()
@@ -92,33 +75,41 @@ def main():
         transaction_signature = result.value
         print(f"Transaction Signature: {transaction_signature}")
         
-        # Check transaction status with improved handling
-        print("Waiting for confirmation...", end="", flush=True)
+        # Check transaction status
         success, status_or_error = check_transaction_status(solana_client, transaction_signature)
         
         if success:
             print(f"\nTransaction {status_or_error}!")
-            # Check new balance with retry
-            for _ in range(3):  # Retry balance check a few times
-                try:
-                    time.sleep(1)  # Wait a bit for balance to update
-                    new_balance = float(solana_client.get_balance(sender_pubkey).value) / 1e9
-                    print(f"New balance: {new_balance} SOL")
-                    if new_balance != initial_balance:
-                        print(f"Amount transferred: {initial_balance - new_balance:.9f} SOL (including fee)")
-                    break
-                except Exception as e:
-                    print(f"Error checking new balance: {e}")
-                    time.sleep(1)
+            # Wait for balance to update and return new balance
+            time.sleep(3)
+            new_balance = float(solana_client.get_balance(sender_pubkey).value) / 1e9
+            return (
+                f"Transaction confirmed! Transferred {amount} SOL to {recipient_wallet}. "
+                f"New balance: {new_balance} SOL."
+            )
         else:
-            print(f"\n{status_or_error}")
-            
-    except ValueError as e:
-        print(f"Validation error: {e}")
+            return f"Transaction failed: {status_or_error}"
+    
     except Exception as e:
-        print(f"Error during transaction: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        return f"Transaction error: {str(e)}"
 
-if __name__ == "__main__":
-    main()
+
+def check_transaction_status(client: Client, signature: str, max_retries: int = 60, retry_delay: float = 1.0):
+    """Check transaction status with detailed error handling and longer timeout."""
+    print("\nChecking transaction status...")
+    for i in range(max_retries):
+        try:
+            # Check if transaction is finalized
+            response = client.get_signature_statuses([signature])
+            if response.value[0] is not None:
+                status = str(response.value[0].confirmation_status)
+                print(f"Current status: {status}")
+                if "confirmed" in status.lower() or "finalized" in status.lower():
+                    return True, status
+        except Exception as e:
+            print(f"Error checking status (attempt {i+1}/{max_retries}): {str(e)}")
+        time.sleep(retry_delay)
+    return False, "Transaction confirmation timed out"
+
+
+

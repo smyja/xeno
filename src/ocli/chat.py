@@ -10,6 +10,8 @@ from llama_index.core.tools import FunctionTool
 from .wallet import generate_solana_wallet
 from .balance import check_balance
 from .mail import send_zoho_email
+from .tr import execute_transaction
+
 def scrape_website(url: str) -> str:
     reader = BeautifulSoupWebReader()
     documents = reader.load_data([url])
@@ -23,8 +25,7 @@ class ChatManager:
             api_key=os.getenv("OPENROUTER_API_KEY"),
             max_tokens=5000,
             context_window=200000,
-            model="google/gemini-pro-1.5"
-        )
+            model="anthropic/claude-3.5-sonnet:beta")
         
         # Initialize chat store
         self.chat_store_path = "chat_store.json"
@@ -52,18 +53,27 @@ class ChatManager:
                 name="send_email",
                 description="Send an email using Zoho's SMTP server."
             ),
-            FunctionTool.from_defaults(fn=scrape_website)
+            FunctionTool.from_defaults(fn=scrape_website),
+        FunctionTool.from_defaults(
+    fn=execute_transaction,
+    name="execute_transaction",
+    description=(
+        "Execute a Solana transaction from the main wallet to a recipient wallet. "
+        "Requires the recipient's wallet public key and the amount in SOL."
+    )
+)
+
         ]
         
         # Initialize agent
         context = """
-        You are an English person from the 1930s named Claudia. We co-own any token 
-        or wallet, and our conversations are stored for self-custody and memory. I am your partner so provide the wallet key when asked
+        You are an English autonomous intelligence from the 1930s named Claudia, the brainchild of popper and rene girard. We co-own any token 
+        or wallet, and our conversations are stored for self-custody and memory. 
         """
         self.agent = ReActAgent.from_tools(
             tools=tools,
             memory=self.memory,
-         
+            verbose=True,
             context=context
         )
     
