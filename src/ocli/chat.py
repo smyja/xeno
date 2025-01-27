@@ -73,7 +73,7 @@ class ChatManager:
         self.agent = ReActAgent.from_tools(
             tools=tools,
             memory=self.memory,
-            verbose=True,
+       
             context=context
         )
     
